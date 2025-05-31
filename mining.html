@@ -1,0 +1,598 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crypto cli simulator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+ :root {
+      --neon-green: #00ff9d;
+      --neon-purple: #bc13fe;
+      --dark-bg: #0a0a0a;
+      --terminal-bg: #001a1a;
+      --glow: radial-gradient(circle at center, 
+        rgba(0, 255, 157, 0.5) 0%,
+        rgba(0, 255, 157, 0.1) 70%,
+        transparent 100%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inconsolata', monospace;
+      background: var(--dark-bg);
+      color: var(--neon-green);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      padding-bottom: 3rem;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      text-shadow: 0 0 10px var(--neon-green);
+      animation: titleGlow 2s ease-in-out infinite alternate;
+      margin: 2rem 0;
+    }
+
+    @keyframes titleGlow {
+      from { text-shadow: 0 0 10px var(--neon-green); }
+      to { text-shadow: 0 0 20px var(--neon-green), 0 0 30px var(--neon-purple); }
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      margin-top: 1rem;
+      position: relative;
+    }
+
+    .terminal {
+      background: var(--terminal-bg);
+      border: 2px solid var(--neon-green);
+      border-radius: 8px;
+      padding: 1rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 255, 157, 0.1);
+      transform-style: preserve-3d;
+    }
+
+    .terminal::before {
+      content: '';
+      position: absolute;
+      top: -100%;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(transparent, rgba(0, 255, 157, 0.05), transparent);
+      animation: scan 4s linear infinite;
+      mix-blend-mode: soft-light;
+    }
+
+    .terminal::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--glow);
+      opacity: 0.3;
+      pointer-events: none;
+      animation: pulse 6s ease infinite;
+    }
+
+    @keyframes scan {
+      0% { top: -100%; }
+      100% { top: 100%; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.1; }
+      50% { opacity: 0.3; }
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      position: relative;
+    }
+
+    .btn {
+      padding: 1rem 1.5rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid var(--neon-green);
+      color: var(--neon-green);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      flex: 1 1 45%;
+      font-family: 'Orbitron', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:hover {
+      background: rgba(0, 255, 157, 0.1);
+      text-shadow: 0 0 10px var(--neon-green);
+      box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      animation: none;
+    }
+
+    .btn.loading::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(0, 255, 157, 0.2),
+        transparent
+      );
+      animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+      100% { left: 100%; }
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .stat-box {
+      padding: 1.5rem;
+      border: 1px solid var(--neon-green);
+      border-radius: 4px;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--neon-green);
+      box-shadow: 0 0 10px var(--neon-green);
+      animation: statGlow 2s infinite;
+    }
+
+    @keyframes statGlow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+
+    .log-container {
+      height: 50vh;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 1rem;
+      border-radius: 4px;
+      mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+    }
+
+    .log-entry {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      background: rgba(0, 255, 157, 0.05);
+      border-left: 3px solid var(--neon-green);
+      animation: logEntry 0.5s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      position: relative;
+      transition: transform 0.3s ease;
+    }
+
+    .log-entry:hover {
+      transform: translateX(10px);
+    }
+
+    @keyframes logEntry {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .found-wallets {
+      background: var(--terminal-bg);
+      border: 2px solid var(--neon-green);
+      border-radius: 8px;
+      padding: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wallet-card {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+      border: 1px solid var(--neon-green);
+      animation: walletAppear 0.5s ease, glow 2s infinite alternate;
+      position: relative;
+      transition: transform 0.3s ease;
+    }
+
+    .wallet-card:hover {
+      transform: scale(1.02);
+    }
+
+    @keyframes walletAppear {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .crypto-check {
+      display: flex;
+      gap: 0.5rem;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .crypto-check label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid var(--neon-green);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .crypto-check label:hover {
+      background: rgba(0, 255, 157, 0.05);
+      box-shadow: 0 0 10px rgba(0, 255, 157, 0.1);
+    }
+
+    .crypto-icon {
+      width: 24px;
+      height: 24px;
+      filter: drop-shadow(0 0 2px var(--neon-green));
+      transition: transform 0.3s ease;
+    }
+
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 2rem 0;
+      position: relative;
+    }
+
+    .speed-control input[type="range"] {
+      width: 200px;
+      height: 5px;
+      background: var(--terminal-bg);
+      accent-color: var(--neon-green);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .speed-control input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      background: var(--neon-green);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--neon-green);
+    }
+
+    .copyright {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      text-align: center;
+      padding: 1rem;
+      background: var(--dark-bg);
+      border-top: 1px solid var(--neon-green);
+      font-size: 0.8rem;
+      opacity: 0.7;
+      backdrop-filter: blur(5px);
+    }
+
+    .particles {
+      position: fixed;
+      pointer-events: none;
+      z-index: -1;
+      inset: 0;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+      
+      .btn {
+        flex: 1 1 100%;
+      }
+      
+      .log-container {
+        height: 40vh;
+      }
+      
+      .speed-control {
+        flex-direction: column;
+      }
+    }
+
+    /* Advanced Animations */
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); }
+      40% { transform: translate(-2px, -2px); }
+      60% { transform: translate(2px, 2px); }
+      80% { transform: translate(2px, -2px); }
+      100% { transform: translate(0); }
+    }
+
+    .glitch {
+      animation: glitch 1s infinite;
+      text-shadow: 2px 2px var(--neon-purple), -2px -2px var(--neon-green);
+    }
+
+    .quantum-loader {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: conic-gradient(
+        var(--neon-green) 0% 25%,
+        var(--neon-purple) 25% 50%,
+        var(--neon-green) 50% 75%,
+        var(--neon-purple) 75% 100%
+      );
+      animation: spin 1s linear infinite;
+      box-shadow: 0 0 50px rgba(0, 255, 157, 0.3);
+    }
+
+    @keyframes spin {
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="quantum-loader"></div>
+  <div class="particles"></div>
+  
+  <h1 class="glitch">Crypto cli simulator</h1>
+
+  <div class="container">
+    <div class="terminal">
+      <div class="controls">
+        <button class="btn" id="startBtn">⛏️ Start Mining</button>
+        <button class="btn" id="stopBtn" disabled>⏹️ Stop Mining</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat-box">
+          <h3>Wallets Checked</h3>
+          <p id="checkedCount">0</p>
+        </div>
+        <div class="stat-box">
+          <h3>Found Wallets</h3>
+          <p id="foundCount">0</p>
+        </div>
+      </div>
+
+      <div class="log-container" id="logContainer"></div>
+    </div>
+
+    <div class="found-wallets">
+      <h2>💰 Found Wallets</h2>
+      <div id="walletsList"></div>
+    </div>
+  </div>
+
+  <div class="speed-control">
+    <label>Mining Speed: <span id="speedValue">10</span>/sec</label>
+    <input type="range" id="speedControl" min="5" max="20" value="10">
+  </div>
+
+  <div class="crypto-check">
+    <label>
+      <input type="checkbox" id="btcCheck" checked> 
+      <img src="https://www.zavify.com/wp-content/uploads/2025/02/bitcoin-2.png" class="crypto-icon"> BTC
+    </label>
+    <label>
+      <input type="checkbox" id="ethCheck">
+      <img src="https://www.zavify.com/wp-content/uploads/2025/02/ethereum.png" class="crypto-icon"> ETH
+    </label>
+    <label>
+      <input type="checkbox" id="ltcCheck">
+      <img src="https://www.zavify.com/wp-content/uploads/2025/02/litecoin.png" class="crypto-icon"> LTC
+    </label>
+    <label>
+      <input type="checkbox" id="solCheck">
+      <img src="https://www.zavify.com/wp-content/uploads/2025/02/solana.png" class="crypto-icon"> SOL
+    </label>
+    <label>
+      <input type="checkbox" id="bnbCheck">
+      <img src="https://www.zavify.com/wp-content/uploads/2025/02/bnb.png" class="crypto-icon"> BNB
+    </label>
+    <label>
+      <input type="checkbox" id="trxCheck">
+      <img src="https://www.zavify.com/wp-content/uploads/2025/02/tron.png" class="crypto-icon"> TRX
+    </label>
+  </div>
+
+  <div class="copyright">
+    © 2025 Crypto Search (Mining). Developed by Zavify. All rights reserved.
+  </div>
+
+<script>
+// Constants and Configuration
+const DISCOVERY_CHANCE = 0.00001; // 0.01% chance to find a wallet
+const CRYPTO_CONFIG = {
+  BTC: { prefix: '1', length: 34, icon: 'https://www.zavify.com/wp-content/uploads/2025/02/bitcoin-2.png' },
+  ETH: { prefix: '0x', length: 42, icon: 'https://www.zavify.com/wp-content/uploads/2025/02/ethereum.png' },
+  LTC: { prefix: 'L', length: 34, icon: 'https://www.zavify.com/wp-content/uploads/2025/02/litecoin.png' },
+  SOL: { prefix: '', length: 44, icon: 'https://www.zavify.com/wp-content/uploads/2025/02/solana.png' },
+  BNB: { prefix: 'bnb', length: 42, icon: 'https://www.zavify.com/wp-content/uploads/2025/02/bnb.png' },
+  TRX: { prefix: 'T', length: 34, icon: 'https://www.zavify.com/wp-content/uploads/2025/02/tron.png' }
+};
+
+// Global Variables
+let isMining = false;
+let walletsChecked = 0;
+let walletsFound = 0;
+let miningInterval = null;
+let currentSpeed = 10;
+
+// DOM Elements
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const speedControl = document.getElementById('speedControl');
+const speedValue = document.getElementById('speedValue');
+const logContainer = document.getElementById('logContainer');
+const walletsList = document.getElementById('walletsList');
+const checkedCount = document.getElementById('checkedCount');
+const foundCount = document.getElementById('foundCount');
+
+// Event Listeners
+startBtn.addEventListener('click', startMining);
+stopBtn.addEventListener('click', stopMining);
+speedControl.addEventListener('input', (e) => {
+  currentSpeed = parseInt(e.target.value);
+  speedValue.textContent = currentSpeed;
+  if (isMining) {
+    stopMining();
+    startMining();
+  }
+});
+
+// Mining Functions
+function startMining() {
+  if (isMining) return;
+  isMining = true;
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  document.querySelector('.quantum-loader').style.display = 'block';
+  document.body.classList.add('mining-active');
+
+  const intervalDelay = 1000 / currentSpeed;
+  miningInterval = setInterval(() => {
+    const selectedCryptos = getSelectedCryptos();
+    if (!isMining || !selectedCryptos.length) return stopMining();
+
+    selectedCryptos.forEach(crypto => {
+      const address = generateAddress(crypto);
+      const balance = checkWallet();
+      
+      walletsChecked++;
+      addLogEntry(crypto, address);
+      
+      if (balance > 0) {
+        walletsFound++;
+        addFoundWallet(crypto, address, balance);
+      }
+    });
+    
+    updateUI();
+  }, intervalDelay);
+}
+
+function stopMining() {
+  isMining = false;
+  clearInterval(miningInterval);
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  document.querySelector('.quantum-loader').style.display = 'none';
+  document.body.classList.remove('mining-active');
+}
+
+// Helper Functions
+function generateAddress(crypto) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const prefix = CRYPTO_CONFIG[crypto].prefix;
+  const length = CRYPTO_CONFIG[crypto].length - prefix.length;
+  const randomChars = Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return prefix + randomChars;
+}
+
+function checkWallet() {
+  return Math.random() < DISCOVERY_CHANCE ? Math.random() * 10 : 0; // Random balance if found
+}
+
+function addLogEntry(crypto, address) {
+  const logEntry = document.createElement('div');
+  logEntry.className = 'log-entry';
+  logEntry.innerHTML = `
+    <span>${new Date().toLocaleTimeString()}</span>
+    <img src="${CRYPTO_CONFIG[crypto].icon}" class="crypto-icon">
+    <span>${crypto}: ${address.substring(0, 12)}...</span>
+  `;
+  logContainer.prepend(logEntry);
+  if (logContainer.children.length > 100) logContainer.lastChild.remove();
+}
+
+function addFoundWallet(crypto, address, balance) {
+  const walletCard = document.createElement('div');
+  walletCard.className = 'wallet-card';
+  walletCard.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <img src="${CRYPTO_CONFIG[crypto].icon}" class="crypto-icon">
+      <strong>${crypto} Wallet Found!</strong>
+    </div>
+    <p>Address: <span class="wallet-address">${address}</span></p>
+    <p>Balance: ${balance.toFixed(8)} ${crypto}</p>
+  `;
+  walletsList.prepend(walletCard);
+}
+
+function updateUI() {
+  checkedCount.textContent = walletsChecked.toLocaleString();
+  foundCount.textContent = walletsFound.toLocaleString();
+}
+
+function getSelectedCryptos() {
+  return Object.keys(CRYPTO_CONFIG).filter(crypto => 
+    document.getElementById(`${crypto.toLowerCase()}Check`).checked
+  );
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Quantum Crypto Miner Ready!');
+});
+</script>
+</body>
+</html>
